@@ -10,9 +10,15 @@ const { processPDF, generateFlashcards } = require('./services/claude');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-// Serve React frontend from build directory
+// Serve React frontend from build directory (if it exists)
 const frontendBuildPath = path.join(__dirname, '../../frontend/build');
-app.use(express.static(frontendBuildPath));
+const fs = require('fs');
+if (fs.existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+  console.log('✅ Serving React frontend from build directory');
+} else {
+  console.log('⚠️ Frontend build directory not found - API only mode');
+}
 
 // Middleware
 app.use(cors());
@@ -30,7 +36,16 @@ pool.on('error', (err) => {
 
 // Routes
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    database: process.env.DATABASE_URL ? 'configured' : 'missing'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'api working' });
 });
 
 // Initialize database schema
