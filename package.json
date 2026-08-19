@@ -1,0 +1,18 @@
+{
+  "name": "3l-law-school-app",
+  "version": "1.0.0",
+  "description": "Comprehensive law school study application for Marie's 3L courses",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "cli"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "backend:dev": "npm run dev -w backend",
+    "frontend:dev": "npm run dev -w frontend",
+    "cli:dev": "npm run dev -w cli",
+    "backend:migrate": "npm run migrate -w backend"
+  }
+}
