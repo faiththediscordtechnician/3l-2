@@ -22,12 +22,12 @@ const { processPDF, generateFlashcards } = require('./services/claude');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-// Serve React frontend from build directory (if it exists)
+// Setup frontend build path (will be served AFTER API routes)
 const frontendBuildPath = path.join(__dirname, '../../frontend/build');
 const fs = require('fs');
-if (fs.existsSync(frontendBuildPath)) {
-  app.use(express.static(frontendBuildPath));
-  console.log('✅ Serving React frontend from build directory');
+const hasFrontend = fs.existsSync(frontendBuildPath);
+if (hasFrontend) {
+  console.log('✅ Frontend build directory found - will serve after API routes');
 } else {
   console.log('⚠️ Frontend build directory not found - API only mode');
 }
@@ -534,6 +534,11 @@ app.put('/api/contacts/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Serve static files AFTER all API routes
+if (hasFrontend) {
+  app.use(express.static(frontendBuildPath));
+}
 
 // Serve React app for all non-API routes (SPA routing)
 app.get('*', (req, res) => {
