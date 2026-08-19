@@ -10,6 +10,10 @@ const { processPDF, generateFlashcards } = require('./services/claude');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// Serve React frontend from build directory
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+app.use(express.static(frontendBuildPath));
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -481,7 +485,12 @@ app.put('/api/contacts/:id', async (req, res) => {
   }
 });
 
-// Health check
+// Serve React app for all non-API routes (SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+});
+
+// Error handling
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
@@ -491,5 +500,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`✨ 3L Backend running on port ${PORT}`);
-  console.log(`📚 Initialize database: POST http://localhost:${PORT}/api/admin/init-db`);
+  console.log(`📚 Frontend: http://localhost:${PORT}`);
+  console.log(`📚 API: http://localhost:${PORT}/api`);
 });

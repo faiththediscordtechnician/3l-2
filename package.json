@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "description": "Comprehensive law school study application for Marie's 3L courses",
   "private": true,
-  "workspaces": [
-    "backend",
-    "frontend",
-    "cli"
-  ],
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
+    "start": "cd backend && node src/index.js",
+    "build": "cd frontend && npm run build",
     "dev": "npm run dev --workspaces",
     "backend:dev": "npm run dev -w backend",
     "frontend:dev": "npm run dev -w frontend",
     "cli:dev": "npm run dev -w cli",
-    "backend:migrate": "npm run migrate -w backend"
+    "backend:migrate": "npm run migrate -w backend",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "postinstall": "npm run install-backend && npm run install-frontend && npm run build"
   }
 }
