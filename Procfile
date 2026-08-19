@@ -1,1 +1,1 @@
-web: cd backend && npm install && node src/index.js
+web: bash start.sh
