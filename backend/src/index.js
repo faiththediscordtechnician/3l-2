@@ -581,3 +581,24 @@ server.on('error', (err) => {
   console.error('Server error:', err);
   process.exit(1);
 });
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📡 SIGTERM received, gracefully shutting down...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    if (pool) {
+      pool.end(() => {
+        console.log('✅ Database connection closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('📡 SIGINT received, gracefully shutting down...');
+  process.exit(0);
+});
