@@ -535,9 +535,14 @@ app.put('/api/contacts/:id', async (req, res) => {
   }
 });
 
-// Serve static files AFTER all API routes
+// Serve static files AFTER all API routes (except for API paths)
 if (hasFrontend) {
-  app.use(express.static(frontendBuildPath));
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    express.static(frontendBuildPath)(req, res, next);
+  });
 }
 
 // Serve React app for all non-API routes (SPA routing)
