@@ -26,13 +26,33 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb' }));
 
 // Database
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+let pool;
+try {
+  if (!process.env.DATABASE_URL) {
+    console.warn('⚠️  DATABASE_URL not set - database features will not work');
+  } else {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-});
+    pool.on('error', (err) => {
+      console.error('⚠️ Database error:', err.message);
+    });
+
+    // Test connection
+    pool.query('SELECT NOW()', (err, res) => {
+      if (err) {
+        console.warn('⚠️ Database connection test failed:', err.message);
+      } else {
+        console.log('✅ Database connected');
+      }
+    });
+  }
+} catch (err) {
+  console.error('❌ Database pool error:', err.message);
+}
 
 // Routes
 app.get('/health', (req, res) => {
@@ -147,6 +167,9 @@ app.post('/api/admin/init-db', async (req, res) => {
 // Get all courses
 app.get('/api/courses', async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
     const result = await pool.query('SELECT * FROM courses ORDER BY name');
     res.json(result.rows);
   } catch (err) {
@@ -527,8 +550,22 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`✨ 3L Backend running on port ${PORT}`);
-  console.log(`📚 Frontend: http://localhost:${PORT}`);
-  console.log(`📚 API: http://localhost:${PORT}/api`);
+const server = app.listen(PORT, () => {
+  console.log('');
+  console.log('╔════════════════════════════════════════╗');
+  console.log('║    ✨ 3L Study App Backend Started     ║');
+  console.log('╚════════════════════════════════════════╝');
+  console.log(`Port: ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Database: ${pool ? '✅ Connected' : '⚠️  Offline'}`);
+  console.log('');
+  console.log('Endpoints:');
+  console.log(`  Health: http://localhost:${PORT}/health`);
+  console.log(`  API: http://localhost:${PORT}/api`);
+  console.log('');
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+  process.exit(1);
 });
