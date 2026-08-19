@@ -535,18 +535,21 @@ app.put('/api/contacts/:id', async (req, res) => {
   }
 });
 
-// Serve static files AFTER all API routes (except for API paths)
+// Serve static assets for /static path
 if (hasFrontend) {
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    express.static(frontendBuildPath)(req, res, next);
-  });
+  const staticPath = path.join(frontendBuildPath, 'static');
+  if (fs.existsSync(staticPath)) {
+    app.use('/static', express.static(staticPath));
+  }
 }
 
 // Serve React app for all non-API routes (SPA routing)
 app.get('*', (req, res) => {
+  // Block API routes - should have been caught by route handlers above
+  if (req.path.startsWith('/api/') || req.path === '/health') {
+    return res.status(404).json({ error: 'API route not found: ' + req.path });
+  }
+
   const indexPath = path.join(frontendBuildPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
