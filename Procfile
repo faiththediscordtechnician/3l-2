@@ -1,2 +1,1 @@
-release: cd backend && npm install
-web: cd backend && node src/index.js
+web: cd backend && npm install && node src/index.js
