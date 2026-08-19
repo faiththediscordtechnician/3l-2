@@ -502,7 +502,21 @@ app.put('/api/contacts/:id', async (req, res) => {
 
 // Serve React app for all non-API routes (SPA routing)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  const indexPath = path.join(frontendBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).json({
+      message: '3L Study App API',
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        courses: '/api/courses',
+        documents: '/api/courses/:id/documents',
+        flashcards: '/api/courses/:id/flashcards'
+      }
+    });
+  }
 });
 
 // Error handling

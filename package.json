@@ -15,7 +15,7 @@
     "cli:dev": "npm run dev -w cli",
     "backend:migrate": "npm run migrate -w backend",
     "install-backend": "cd backend && npm install",
-    "install-frontend": "cd frontend && npm install",
-    "postinstall": "npm run install-backend && npm run install-frontend && npm run build"
+    "install-frontend": "cd frontend && npm install || true",
+    "postinstall": "npm run install-backend"
   }
 }
