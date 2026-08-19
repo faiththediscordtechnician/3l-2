@@ -8,14 +8,9 @@
   },
   "scripts": {
     "start": "cd backend && node src/index.js",
-    "build": "cd frontend && npm run build",
     "dev": "npm run dev --workspaces",
     "backend:dev": "npm run dev -w backend",
     "frontend:dev": "npm run dev -w frontend",
-    "cli:dev": "npm run dev -w cli",
-    "backend:migrate": "npm run migrate -w backend",
-    "install-backend": "cd backend && npm install",
-    "install-frontend": "cd frontend && npm install || true",
-    "postinstall": "npm run install-backend"
+    "cli:dev": "npm run dev -w cli"
   }
 }
