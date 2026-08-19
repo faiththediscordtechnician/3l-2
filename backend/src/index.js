@@ -542,11 +542,6 @@ if (hasFrontend) {
 
 // Serve React app for all non-API routes (SPA routing)
 app.get('*', (req, res) => {
-  // Don't serve React for API routes
-  if (req.path.startsWith('/api/') || req.path === '/health') {
-    return res.status(404).json({ error: 'API endpoint not found' });
-  }
-
   const indexPath = path.join(frontendBuildPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
@@ -557,8 +552,7 @@ app.get('*', (req, res) => {
       endpoints: {
         health: '/health',
         courses: '/api/courses',
-        documents: '/api/courses/:id/documents',
-        flashcards: '/api/courses/:id/flashcards'
+        admin: '/api/admin/init-db'
       }
     });
   }
