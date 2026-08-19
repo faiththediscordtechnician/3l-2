@@ -11,6 +11,7 @@
     "dev": "npm run dev --workspaces",
     "backend:dev": "npm run dev -w backend",
     "frontend:dev": "npm run dev -w frontend",
-    "cli:dev": "npm run dev -w cli"
+    "cli:dev": "npm run dev -w cli",
+    "postinstall": "cd backend && npm install"
   }
 }
