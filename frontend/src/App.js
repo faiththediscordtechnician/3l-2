@@ -7,6 +7,7 @@ import ReviewMode from './components/ReviewMode';
 import ContactsPage from './components/ContactsPage';
 import NotesPage from './components/NotesPage';
 import Alert from './components/Alert';
+import Cat from './components/Cat';
 import './App.css';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
   return (
     <div className="app">
       <Header />
+      <Cat />
       <div className="container">
         <Alert />
 

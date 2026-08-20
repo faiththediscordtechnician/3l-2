@@ -77,11 +77,13 @@ button:hover {
   background: #FFC4E0;
   box-shadow: 3px 3px 10px rgba(0,0,0,0.15);
   transform: translateY(-1px);
+  animation: n64Wiggle 0.2s ease-in-out;
 }
 
 button:active {
   box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-  transform: translateY(0px);
+  transform: scale(0.95) translateY(0px);
+  animation: n64Press 0.1s ease-out;
 }
 
 button.secondary {
@@ -102,10 +104,12 @@ button.secondary:hover {
   box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
   margin-bottom: 24px;
   transition: all 0.15s ease;
+  animation: n64Pop 0.3s ease-out;
 }
 
 .card:hover {
   box-shadow: 3px 3px 12px rgba(0,0,0,0.12);
+  animation: n64Pulse 0.6s ease-in-out infinite;
 }
 
 .card h3 {
@@ -136,12 +140,14 @@ button.secondary:hover {
   color: #4A4A4A;
   display: flex;
   flex-direction: column;
+  animation: n64Pop 0.4s ease-out;
 }
 
 .grid-item:hover {
   transform: translateY(-3px);
   box-shadow: 4px 4px 12px rgba(0,0,0,0.12);
   background: #E5D8D3;
+  animation: n64Float 0.8s ease-in-out infinite;
 }
 
 .grid-item h4 {
@@ -223,6 +229,47 @@ button.secondary:hover {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes walk {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes n64Press {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes n64Pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes n64Wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-1deg); }
+  75% { transform: rotate(1deg); }
+}
+
+@keyframes n64Float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes n64Pulse {
+  0%, 100% { box-shadow: 2px 2px 6px rgba(0,0,0,0.1); }
+  50% { box-shadow: 3px 3px 12px rgba(255, 179, 217, 0.4); }
+}
+
+@keyframes n64GlitchBottom {
+  0% { clip-path: inset(0 0 0 0); }
+  20% { clip-path: inset(60% 0 0 0); }
+  40% { clip-path: inset(0 0 0 0); }
+  60% { clip-path: inset(20% 0 30% 0); }
+  100% { clip-path: inset(0 0 0 0); }
 }
 
 .alert {
@@ -312,11 +359,13 @@ button.secondary:hover {
   cursor: pointer;
   transition: all 0.2s ease;
   perspective: 1000px;
+  animation: n64Pop 0.5s ease-out;
 }
 
 .flashcard:hover {
   transform: translateY(-3px);
   box-shadow: 4px 4px 16px rgba(0,0,0,0.14);
+  animation: n64Float 1s ease-in-out infinite;
 }
 
 .flashcard.flipped {
