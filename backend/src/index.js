@@ -393,6 +393,78 @@ app.post('/api/documents/:id/generate-flashcards', async (req, res) => {
   }
 });
 
+// Merge multiple PDFs
+app.post('/api/documents/merge', async (req, res) => {
+  try {
+    const { documentIds, title } = req.body;
+
+    if (!documentIds || documentIds.length < 2) {
+      return res.status(400).json({ error: 'At least 2 documents required to merge' });
+    }
+
+    if (!title) {
+      return res.status(400).json({ error: 'title required' });
+    }
+
+    console.log(`📦 Merging ${documentIds.length} PDFs...`);
+
+    const { PDFDocument } = require('pdf-lib');
+    const fetch = require('node-fetch');
+
+    // Create new PDF document
+    const mergedPdf = await PDFDocument.create();
+
+    // Download and merge each PDF
+    for (const docId of documentIds) {
+      const docResult = await pool.query('SELECT * FROM documents WHERE id = $1', [docId]);
+      if (docResult.rows.length === 0) {
+        return res.status(404).json({ error: `Document ${docId} not found` });
+      }
+
+      const doc = docResult.rows[0];
+      console.log(`  📄 Adding ${doc.title}...`);
+
+      try {
+        // Download PDF from S3
+        const response = await fetch(doc.s3_url);
+        const buffer = await response.buffer();
+        const pdf = await PDFDocument.load(buffer);
+
+        // Copy all pages
+        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        pages.forEach((page) => mergedPdf.addPage(page));
+      } catch (err) {
+        console.error(`Error processing ${doc.title}:`, err.message);
+        return res.status(400).json({ error: `Failed to process ${doc.title}: ${err.message}` });
+      }
+    }
+
+    // Save merged PDF to buffer
+    const pdfBytes = await mergedPdf.save();
+
+    // Upload merged PDF to S3
+    const s3Key = `merged/${Date.now()}-${title}.pdf`;
+    const s3Result = await uploadPDF(Buffer.from(pdfBytes), `${title}.pdf`, 'merged');
+
+    // Save to database as a document (without course_id since it's merged)
+    const result = await pool.query(
+      `INSERT INTO documents (title, s3_key, s3_url, file_size, processed)
+       VALUES ($1, $2, $3, $4, FALSE)
+       RETURNING *`,
+      [title, s3Result.s3_key, s3Result.s3_url, pdfBytes.length]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `Merged ${documentIds.length} PDFs successfully`,
+      document: result.rows[0],
+    });
+  } catch (err) {
+    console.error('PDF merge error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get flashcards by course
 app.get('/api/courses/:id/flashcards', async (req, res) => {
   try {

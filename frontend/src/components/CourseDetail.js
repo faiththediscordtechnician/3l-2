@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import DocumentUpload from './DocumentUpload';
 import DocumentList from './DocumentList';
+import DocumentMerge from './DocumentMerge';
 
 function CourseDetail({ courseId }) {
   const [tab, setTab] = useState('upload');
@@ -27,10 +28,19 @@ function CourseDetail({ courseId }) {
         >
           📚 Documents ({documents.length})
         </button>
+        {documents.length > 1 && (
+          <button
+            className={tab === 'merge' ? 'active' : ''}
+            onClick={() => setTab('merge')}
+          >
+            🔗 Merge PDFs
+          </button>
+        )}
       </div>
 
       {tab === 'upload' && <DocumentUpload courseId={courseId} />}
       {tab === 'documents' && <DocumentList courseId={courseId} documents={documents} />}
+      {tab === 'merge' && <DocumentMerge courseId={courseId} documents={documents} />}
     </div>
   );
 }
