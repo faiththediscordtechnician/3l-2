@@ -156,6 +156,27 @@ app.post('/api/admin/init-db', async (req, res) => {
         follow_up_date TIMESTAMP
       );
 
+      -- Class notes table
+      CREATE TABLE IF NOT EXISTS class_notes (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id),
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- CanLII case references
+      CREATE TABLE IF NOT EXISTS canlii_references (
+        id SERIAL PRIMARY KEY,
+        note_id INTEGER NOT NULL REFERENCES class_notes(id) ON DELETE CASCADE,
+        case_name VARCHAR(255) NOT NULL,
+        case_year INTEGER,
+        court VARCHAR(255),
+        canlii_url VARCHAR(512),
+        added_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- Insert 3L courses
       INSERT INTO courses (name, professor) VALUES
         ('Labour Law I', 'Malhotra'),
@@ -531,6 +552,219 @@ app.put('/api/contacts/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error updating contact:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get notes for a course
+app.get('/api/courses/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM class_notes WHERE course_id = $1 ORDER BY updated_at DESC',
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching notes:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single note with references
+app.get('/api/notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const noteResult = await pool.query('SELECT * FROM class_notes WHERE id = $1', [id]);
+    if (noteResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    const refsResult = await pool.query(
+      'SELECT * FROM canlii_references WHERE note_id = $1 ORDER BY added_at DESC',
+      [id]
+    );
+
+    res.json({
+      ...noteResult.rows[0],
+      references: refsResult.rows,
+    });
+  } catch (err) {
+    console.error('Error fetching note:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new note
+app.post('/api/courses/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ error: 'title and content required' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO class_notes (course_id, title, content) VALUES ($1, $2, $3) RETURNING *',
+      [id, title, content]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error creating note:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update note
+app.put('/api/notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    const result = await pool.query(
+      `UPDATE class_notes
+       SET title = COALESCE($1, title),
+           content = COALESCE($2, content),
+           updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [title, content, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating note:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete note
+app.delete('/api/notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM class_notes WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    res.json({ success: true, message: 'Note deleted' });
+  } catch (err) {
+    console.error('Error deleting note:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Search CanLII
+app.get('/api/canlii/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query parameter required' });
+    }
+
+    // Use DuckDuckGo or similar to search with site:canlii.ca
+    // For now, return search URLs and basic structure
+    const canliiSearchUrl = `https://canlii.ca/en/search?q=${encodeURIComponent(query)}`;
+
+    // Simple approach: return a URL for now
+    // In production, could use an API or web scraping
+    res.json({
+      query,
+      searchUrl: canliiSearchUrl,
+      message: 'Search CanLII at the provided URL',
+    });
+  } catch (err) {
+    console.error('Error searching CanLII:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add CanLII reference to note
+app.post('/api/notes/:id/references', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { case_name, case_year, court, canlii_url } = req.body;
+
+    if (!case_name) {
+      return res.status(400).json({ error: 'case_name required' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO canlii_references (note_id, case_name, case_year, court, canlii_url)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [id, case_name, case_year, court, canlii_url]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error adding reference:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export note as PDF
+app.get('/api/notes/:id/export-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const noteResult = await pool.query('SELECT * FROM class_notes WHERE id = $1', [id]);
+
+    if (noteResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    const note = noteResult.rows[0];
+    const refsResult = await pool.query(
+      'SELECT * FROM canlii_references WHERE note_id = $1 ORDER BY added_at DESC',
+      [id]
+    );
+
+    // Generate simple PDF using text (can be upgraded to use a library like pdfkit)
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="note-${id}.pdf"`);
+
+    doc.pipe(res);
+
+    // Title
+    doc.fontSize(20).font('Helvetica-Bold').text(note.title, { underline: true });
+    doc.moveDown();
+
+    // Content
+    doc.fontSize(11).font('Helvetica');
+    doc.text(note.content);
+    doc.moveDown();
+
+    // References
+    if (refsResult.rows.length > 0) {
+      doc.fontSize(14).font('Helvetica-Bold').text('CanLII References');
+      doc.moveDown();
+      refsResult.rows.forEach((ref) => {
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`${ref.case_name} (${ref.case_year || 'N/A'})`);
+        if (ref.court) doc.text(`Court: ${ref.court}`);
+        if (ref.canlii_url) doc.text(`URL: ${ref.canlii_url}`);
+        doc.moveDown(0.5);
+      });
+    }
+
+    // Date
+    doc.moveDown();
+    doc.fontSize(9).text(`Generated: ${new Date().toISOString()}`);
+
+    doc.end();
+  } catch (err) {
+    console.error('Error exporting PDF:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -5,6 +5,7 @@ import CourseList from './components/CourseList';
 import CourseDetail from './components/CourseDetail';
 import ReviewMode from './components/ReviewMode';
 import ContactsPage from './components/ContactsPage';
+import NotesPage from './components/NotesPage';
 import Alert from './components/Alert';
 import './App.css';
 
@@ -49,6 +50,12 @@ function App() {
               >
                 🎯 Review
               </button>
+              <button
+                className={page === 'notes' ? 'active' : ''}
+                onClick={() => setPage('notes')}
+              >
+                📝 Notes
+              </button>
             </>
           )}
           <button
@@ -67,6 +74,10 @@ function App() {
         )}
 
         {page === 'review' && currentCourseId && <ReviewMode courseId={currentCourseId} />}
+
+        {page === 'notes' && currentCourseId && (
+          <NotesPage courseId={currentCourseId} />
+        )}
 
         {page === 'contacts' && <ContactsPage />}
       </div>
