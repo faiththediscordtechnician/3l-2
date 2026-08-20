@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import CanLIISearch from './CanLIISearch';
+import CanLIIBrowser from './CanLIIBrowser';
 
 export default function NotesEditor({ note, courseId, onSave, onCancel, loading }) {
   const [title, setTitle] = useState(note?.title || '');
   const [contentHTML, setContentHTML] = useState(note?.content || '');
   const [references, setReferences] = useState(note?.references || []);
-  const [showCanLII, setShowCanLII] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
   const editorRef = useRef(null);
 
   useEffect(() => {
@@ -33,7 +33,6 @@ export default function NotesEditor({ note, courseId, onSave, onCancel, loading 
     try {
       const response = await axios.post(`/api/notes/${note.id}/references`, refData);
       setReferences([...references, response.data]);
-      setShowCanLII(false);
     } catch (err) {
       alert('Failed to add reference: ' + (err.response?.data?.error || err.message));
     }
@@ -106,83 +105,109 @@ export default function NotesEditor({ note, courseId, onSave, onCancel, loading 
         />
       </div>
 
-      {/* Formatting Toolbar */}
-      <div
-        style={{
-          backgroundColor: '#E8D4D9',
-          padding: '12px',
-          border: '2px solid #4A4A4A',
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '6px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <FormatButton icon="B" command="bold" tooltip="Bold (Ctrl+B)" />
-        <FormatButton icon="I" command="italic" tooltip="Italic (Ctrl+I)" />
-        <FormatButton icon="U" command="underline" tooltip="Underline (Ctrl+U)" />
-        <FormatButton icon="S" command="strikethrough" tooltip="Strikethrough" />
+      {/* Main Layout - Editor + Browser */}
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+        {/* Left: Editor */}
+        <div style={{ flex: showBrowser ? '1' : '1', minWidth: '0' }}>
+          {/* Formatting Toolbar */}
+          <div
+            style={{
+              backgroundColor: '#E8D4D9',
+              padding: '12px',
+              border: '2px solid #4A4A4A',
+              marginBottom: '12px',
+              display: 'flex',
+              gap: '6px',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
+            <FormatButton icon="B" command="bold" tooltip="Bold (Ctrl+B)" />
+            <FormatButton icon="I" command="italic" tooltip="Italic (Ctrl+I)" />
+            <FormatButton icon="U" command="underline" tooltip="Underline (Ctrl+U)" />
+            <FormatButton icon="S" command="strikethrough" tooltip="Strikethrough" />
 
-        <div style={{ width: '1px', height: '28px', backgroundColor: '#4A4A4A', margin: '0 4px' }} />
+            <div style={{ width: '1px', height: '28px', backgroundColor: '#4A4A4A', margin: '0 4px' }} />
 
-        <span style={{ fontSize: '12px', fontWeight: '600', marginRight: '4px' }}>Highlight:</span>
-        <HighlightButton color="#FFFF00" label="Yellow" />
-        <HighlightButton color="#FFD700" label="Gold" />
-        <HighlightButton color="#FFB6C1" label="Pink" />
-        <HighlightButton color="#B6E5FF" label="Blue" />
-        <HighlightButton color="#C0FFC0" label="Green" />
-      </div>
+            <span style={{ fontSize: '12px', fontWeight: '600', marginRight: '4px' }}>Highlight:</span>
+            <HighlightButton color="#FFFF00" label="Yellow" />
+            <HighlightButton color="#FFD700" label="Gold" />
+            <HighlightButton color="#FFB6C1" label="Pink" />
+            <HighlightButton color="#B6E5FF" label="Blue" />
+            <HighlightButton color="#C0FFC0" label="Green" />
 
-      {/* Ruled Paper Editor */}
-      <div
-        style={{
-          backgroundColor: '#FFFEF5',
-          backgroundImage: `
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 20px,
-              #E8E0D0 20px,
-              #E8E0D0 21px
-            ),
-            repeating-linear-gradient(
-              0deg,
-              #F5F0E8 0px,
-              #F5F0E8 27px,
-              #D4C5B0 27px,
-              #D4C5B0 28px
-            )
-          `,
-          padding: '24px 28px',
-          minHeight: '450px',
-          border: '3px solid #4A4A4A',
-          marginBottom: '20px',
-          boxShadow: '2px 2px 8px rgba(0,0,0,0.1)',
-        }}
-      >
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={() => setContentHTML(editorRef.current?.innerHTML || '')}
-          style={{
-            outline: 'none',
-            fontFamily: 'VT323, monospace',
-            fontSize: '16px',
-            lineHeight: '28px',
-            color: '#4A4A4A',
-            minHeight: '400px',
-            wordWrap: 'break-word',
-          }}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            document.execCommand('insertText', false, text);
-          }}
-        >
-          {!note && 'Start typing your notes here...'}
+            <button
+              onClick={() => setShowBrowser(!showBrowser)}
+              style={{
+                marginLeft: 'auto',
+                backgroundColor: '#FFE8B6',
+                padding: '8px 12px',
+                border: '2px solid #4A4A4A',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              {showBrowser ? '✕ Close' : '📚 CanLII'}
+            </button>
+          </div>
+
+          {/* Ruled Paper Editor */}
+          <div
+            style={{
+              backgroundColor: '#FFFEF5',
+              backgroundImage: `
+                repeating-linear-gradient(
+                  90deg,
+                  transparent,
+                  transparent 20px,
+                  #E8E0D0 20px,
+                  #E8E0D0 21px
+                ),
+                repeating-linear-gradient(
+                  0deg,
+                  #F5F0E8 0px,
+                  #F5F0E8 27px,
+                  #D4C5B0 27px,
+                  #D4C5B0 28px
+                )
+              `,
+              padding: '24px 28px',
+              minHeight: '450px',
+              border: '3px solid #4A4A4A',
+              boxShadow: '2px 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={() => setContentHTML(editorRef.current?.innerHTML || '')}
+              style={{
+                outline: 'none',
+                fontFamily: 'VT323, monospace',
+                fontSize: '16px',
+                lineHeight: '28px',
+                color: '#4A4A4A',
+                minHeight: '400px',
+                wordWrap: 'break-word',
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+              }}
+            >
+              {!note && 'Start typing your notes here...'}
+            </div>
+          </div>
         </div>
+
+        {/* Right: CanLII Browser */}
+        {showBrowser && (
+          <div style={{ flex: '1', minWidth: '0' }}>
+            <CanLIIBrowser onAddReference={handleAddReference} />
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -193,14 +218,6 @@ export default function NotesEditor({ note, courseId, onSave, onCancel, loading 
         <button onClick={onCancel} className="secondary" disabled={loading}>
           Cancel
         </button>
-        {note && (
-          <button
-            onClick={() => setShowCanLII(true)}
-            style={{ backgroundColor: '#FFE8B6', marginLeft: 'auto', fontWeight: '600' }}
-          >
-            📚 Add CanLII Case
-          </button>
-        )}
       </div>
 
       {/* CanLII References */}
@@ -262,10 +279,6 @@ export default function NotesEditor({ note, courseId, onSave, onCancel, loading 
             ))}
           </div>
         </div>
-      )}
-
-      {showCanLII && note && (
-        <CanLIISearch onAddReference={handleAddReference} onClose={() => setShowCanLII(false)} />
       )}
     </div>
   );
