@@ -177,14 +177,28 @@ app.post('/api/admin/init-db', async (req, res) => {
         added_at TIMESTAMP DEFAULT NOW()
       );
 
+      -- Course schedules (times and locations)
+      CREATE TABLE IF NOT EXISTS course_schedules (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id),
+        course_code VARCHAR(50),
+        day_of_week INTEGER NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        room VARCHAR(100),
+        location_code VARCHAR(50),
+        section VARCHAR(10),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- Insert 3L courses
       INSERT INTO courses (name, professor) VALUES
-        ('Labour Law I', 'Malhotra'),
-        ('Public Law', NULL),
-        ('International Law', NULL),
-        ('Globalization and Law', NULL),
-        ('Mediation', NULL)
-      ON CONFLICT DO NOTHING;
+        ('Labour Law I', 'Ravi A. Malhotra'),
+        ('Studies in Public Law', 'Andres Drew'),
+        ('Studies in International Law', 'Aram Kerkonian'),
+        ('Globalization and Law', 'Errol Mendes'),
+        ('Mediation Theory and Practice', 'Emilia Péch')
+      ON CONFLICT (name) DO NOTHING;
     `;
 
     await client.query(schema);
@@ -837,6 +851,245 @@ app.get('/api/notes/:id/export-pdf', async (req, res) => {
     doc.end();
   } catch (err) {
     console.error('Error exporting PDF:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Seed course schedules (for initialization)
+app.post('/api/admin/seed-schedule', async (req, res) => {
+  try {
+    const client = await pool.connect();
+
+    // Get course IDs
+    const courses = await client.query('SELECT id, name FROM courses');
+    const courseMap = {};
+    courses.rows.forEach(c => {
+      courseMap[c.name] = c.id;
+    });
+
+    // Clear existing schedules
+    await client.query('DELETE FROM course_schedules');
+
+    // Insert schedules (0 = Monday, 1 = Tuesday, etc.)
+    const schedules = [
+      // Labour Law I - Monday 2:30PM-3:50PM & Wednesday 1:00PM-2:20PM
+      {
+        course_id: courseMap['Labour Law I'],
+        course_code: 'CML 3233',
+        day_of_week: 0,
+        start_time: '14:30',
+        end_time: '15:50',
+        room: '57 Louis Pasteur (FTX) 137',
+        location_code: 'FTX',
+        section: 'A00'
+      },
+      {
+        course_id: courseMap['Labour Law I'],
+        course_code: 'CML 3233',
+        day_of_week: 2,
+        start_time: '13:00',
+        end_time: '14:20',
+        room: '57 Louis Pasteur (FTX) 137',
+        location_code: 'FTX',
+        section: 'A00'
+      },
+      // Studies in Public Law - Monday 4:00PM-6:50PM
+      {
+        course_id: courseMap['Studies in Public Law'],
+        course_code: 'CML 4104',
+        day_of_week: 0,
+        start_time: '16:00',
+        end_time: '18:50',
+        room: '57 Louis Pasteur (FTX) 413',
+        location_code: 'FTX',
+        section: 'B00'
+      },
+      // Studies in International Law - Tuesday 5:30PM-8:20PM
+      {
+        course_id: courseMap['Studies in International Law'],
+        course_code: 'CML 4108',
+        day_of_week: 1,
+        start_time: '17:30',
+        end_time: '20:20',
+        room: '57 Louis Pasteur (FTX) 402',
+        location_code: 'FTX',
+        section: 'A00'
+      },
+      // Globalization and Law - Tuesday 2:30PM-3:50PM & Thursday 2:30PM-3:50PM
+      {
+        course_id: courseMap['Globalization and Law'],
+        course_code: 'CML 4150',
+        day_of_week: 1,
+        start_time: '14:30',
+        end_time: '15:50',
+        room: '57 Louis Pasteur (FTX) 315',
+        location_code: 'FTX',
+        section: 'A00'
+      },
+      {
+        course_id: courseMap['Globalization and Law'],
+        course_code: 'CML 4150',
+        day_of_week: 3,
+        start_time: '14:30',
+        end_time: '15:50',
+        room: '57 Louis Pasteur (FTX) 315',
+        location_code: 'FTX',
+        section: 'A00'
+      },
+      // Mediation Theory and Practice - Wednesday 5:30PM-8:20PM
+      {
+        course_id: courseMap['Mediation Theory and Practice'],
+        course_code: 'CML 2320',
+        day_of_week: 2,
+        start_time: '17:30',
+        end_time: '20:20',
+        room: '120 University (FSS) 14001',
+        location_code: 'FSS',
+        section: 'A00'
+      }
+    ];
+
+    for (const schedule of schedules) {
+      await client.query(
+        `INSERT INTO course_schedules (course_id, course_code, day_of_week, start_time, end_time, room, location_code, section)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          schedule.course_id,
+          schedule.course_code,
+          schedule.day_of_week,
+          schedule.start_time,
+          schedule.end_time,
+          schedule.room,
+          schedule.location_code,
+          schedule.section
+        ]
+      );
+    }
+
+    client.release();
+    res.json({ success: true, message: 'Schedule seeded successfully' });
+  } catch (err) {
+    console.error('Seed schedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get today's schedule
+app.get('/api/schedule/today', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    // Get current day of week (0 = Monday, 6 = Sunday)
+    // In JavaScript, Sunday is 0, so we need to adjust
+    const jsDay = new Date().getDay();
+    const dbDay = jsDay === 0 ? 6 : jsDay - 1; // Convert to 0=Mon, 1=Tue, etc.
+
+    const result = await pool.query(
+      `SELECT
+        c.id as course_id,
+        c.name as course_name,
+        c.professor,
+        s.course_code,
+        s.start_time,
+        s.end_time,
+        s.room,
+        s.location_code,
+        s.section
+       FROM course_schedules s
+       JOIN courses c ON s.course_id = c.id
+       WHERE s.day_of_week = $1
+       ORDER BY s.start_time ASC`,
+      [dbDay]
+    );
+
+    res.json({
+      day: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dbDay],
+      date: new Date().toISOString().split('T')[0],
+      classes: result.rows,
+      count: result.rows.length
+    });
+  } catch (err) {
+    console.error('Error fetching today\'s schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get schedule for specific day (0=Monday, 6=Sunday)
+app.get('/api/schedule/:day', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    const { day } = req.params;
+    const dayNum = parseInt(day, 10);
+
+    if (isNaN(dayNum) || dayNum < 0 || dayNum > 6) {
+      return res.status(400).json({ error: 'day must be 0-6 (0=Monday)' });
+    }
+
+    const result = await pool.query(
+      `SELECT
+        c.id as course_id,
+        c.name as course_name,
+        c.professor,
+        s.course_code,
+        s.start_time,
+        s.end_time,
+        s.room,
+        s.location_code,
+        s.section
+       FROM course_schedules s
+       JOIN courses c ON s.course_id = c.id
+       WHERE s.day_of_week = $1
+       ORDER BY s.start_time ASC`,
+      [dayNum]
+    );
+
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    res.json({
+      day: dayNames[dayNum],
+      classes: result.rows,
+      count: result.rows.length
+    });
+  } catch (err) {
+    console.error('Error fetching schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all courses with their schedules
+app.get('/api/courses-with-schedules', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    const result = await pool.query(
+      `SELECT
+        c.id,
+        c.name,
+        c.professor,
+        json_agg(json_build_object(
+          'course_code', s.course_code,
+          'day_of_week', s.day_of_week,
+          'start_time', s.start_time,
+          'end_time', s.end_time,
+          'room', s.room,
+          'location_code', s.location_code,
+          'section', s.section
+        )) FILTER (WHERE s.id IS NOT NULL) as schedules
+       FROM courses c
+       LEFT JOIN course_schedules s ON c.id = s.course_id
+       GROUP BY c.id, c.name, c.professor
+       ORDER BY c.name`
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching courses with schedules:', err);
     res.status(500).json({ error: err.message });
   }
 });

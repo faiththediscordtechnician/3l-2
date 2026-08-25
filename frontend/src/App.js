@@ -6,6 +6,7 @@ import CourseDetail from './components/CourseDetail';
 import ReviewMode from './components/ReviewMode';
 import ContactsPage from './components/ContactsPage';
 import NotesPage from './components/NotesPage';
+import TodaySchedule from './components/TodaySchedule';
 import Alert from './components/Alert';
 import Cat from './components/Cat';
 import './App.css';
@@ -32,6 +33,12 @@ function App() {
 
         {/* Navigation Tabs */}
         <nav className="nav-tabs">
+          <button
+            className={page === 'schedule' ? 'active' : ''}
+            onClick={() => setPage('schedule')}
+          >
+            📅 Today's Schedule
+          </button>
           <button
             className={page === 'courses' ? 'active' : ''}
             onClick={() => setPage('courses')}
@@ -69,6 +76,8 @@ function App() {
         </nav>
 
         {/* Pages */}
+        {page === 'schedule' && <TodaySchedule />}
+
         {page === 'courses' && <CourseList onSelectCourse={handleCourseSelect} />}
 
         {page === 'course-detail' && currentCourseId && (
