@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Courses table
+model Course {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  professor String?
+  courseCode String?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  documents         Document[]
+  flashcards        Flashcard[]
+  studySessions     StudySession[]
+  classNotes        ClassNote[]
+  courseSchedules   CourseSchedule[]
+
+  @@map("courses")
+}
+
+// Documents (PDFs) table
+model Document {
+  id          Int       @id @default(autoincrement())
+  courseId    Int?
+  title       String
+  s3Key       String
+  s3Url       String?
+  fileSize    Int?
+  uploadedAt  DateTime  @default(now())
+  processed   Boolean   @default(false)
+
+  // Relations
+  course              Course?                 @relation(fields: [courseId], references: [id])
+  documentSummaries   DocumentSummary[]
+  flashcards          Flashcard[]
+
+  @@map("documents")
+}
+
+// Document summaries (Claude-generated)
+model DocumentSummary {
+  id                    Int       @id @default(autoincrement())
+  documentId            Int
+  holding               String?
+  reasoning             String?
+  keyPoints             String[]
+  statuteReferences     String[]
+  relatedDoctrine       String?
+  generatedAt           DateTime  @default(now())
+
+  // Relations
+  document              Document  @relation(fields: [documentId], references: [id])
+
+  @@map("document_summaries")
+}
+
+// Flashcards table
+model Flashcard {
+  id          Int       @id @default(autoincrement())
+  courseId    Int
+  documentId  Int?
+  question    String
+  answer      String
+  cardType    String?
+  difficulty  Int       @default(1)
+  tags        String[]
+  createdAt   DateTime  @default(now())
+  lastReviewed DateTime?
+  reviewCount Int       @default(0)
+
+  // Relations
+  course      Course    @relation(fields: [courseId], references: [id])
+  document    Document? @relation(fields: [documentId], references: [id])
+
+  @@map("flashcards")
+}
+
+// Study sessions table
+model StudySession {
+  id              Int       @id @default(autoincrement())
+  courseId        Int
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  cardsReviewed   Int       @default(0)
+  cardsMastered   Int       @default(0)
+
+  // Relations
+  course          Course    @relation(fields: [courseId], references: [id])
+
+  @@map("study_sessions")
+}
+
+// Networking contacts table
+model NetworkingContact {
+  id              Int       @id @default(autoincrement())
+  name            String
+  role            String?
+  firm            String?
+  connectedBy     String?
+  contactDate     DateTime?
+  notes           String?
+  status          String?
+  followUpDate    DateTime?
+
+  @@map("networking_contacts")
+}
+
+// Class notes table
+model ClassNote {
+  id        Int       @id @default(autoincrement())
+  courseId  Int
+  title     String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  course              Course              @relation(fields: [courseId], references: [id])
+  canliReferences     CanliReference[]
+
+  @@map("class_notes")
+}
+
+// CanLII case references
+model CanliReference {
+  id          Int       @id @default(autoincrement())
+  noteId      Int
+  caseName    String
+  caseYear    Int?
+  court       String?
+  canliUrl    String?
+  addedAt     DateTime  @default(now())
+
+  // Relations
+  note        ClassNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@map("canlii_references")
+}
+
+// NEW: Course schedules (times and locations)
+model CourseSchedule {
+  id              Int       @id @default(autoincrement())
+  courseId        Int
+  courseCode      String?
+  dayOfWeek       Int       // 0 = Monday, 1 = Tuesday, ..., 6 = Sunday
+  startTime       String    // HH:MM format (24-hour)
+  endTime         String    // HH:MM format (24-hour)
+  room            String?
+  locationCode    String?   // e.g., "FTX", "FSS"
+  section         String?   // e.g., "A00", "B00"
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  course          Course    @relation(fields: [courseId], references: [id])
+
+  @@map("course_schedules")
+}

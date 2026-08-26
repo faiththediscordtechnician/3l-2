@@ -16,6 +16,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const multer = require('multer');
+const prisma = require('./lib/prisma');
 const { uploadPDF } = require('./services/s3');
 const { processPDF, generateFlashcards } = require('./services/claude');
 
@@ -855,160 +856,184 @@ app.get('/api/notes/:id/export-pdf', async (req, res) => {
   }
 });
 
-// Seed course schedules (for initialization)
+// Seed course schedules using Prisma
 app.post('/api/admin/seed-schedule', async (req, res) => {
   try {
-    const client = await pool.connect();
+    console.log('🌱 Seeding schedule via API...');
 
-    // Get course IDs
-    const courses = await client.query('SELECT id, name FROM courses');
-    const courseMap = {};
-    courses.rows.forEach(c => {
-      courseMap[c.name] = c.id;
-    });
+    // Create or update courses
+    const courses = await Promise.all([
+      prisma.course.upsert({
+        where: { name: 'Labour Law I' },
+        update: {},
+        create: {
+          name: 'Labour Law I',
+          professor: 'Ravi A. Malhotra',
+          courseCode: 'CML 3233',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Studies in Public Law' },
+        update: {},
+        create: {
+          name: 'Studies in Public Law',
+          professor: 'Andres Drew',
+          courseCode: 'CML 4104',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Studies in International Law' },
+        update: {},
+        create: {
+          name: 'Studies in International Law',
+          professor: 'Aram Kerkonian',
+          courseCode: 'CML 4108',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Globalization and Law' },
+        update: {},
+        create: {
+          name: 'Globalization and Law',
+          professor: 'Errol Mendes',
+          courseCode: 'CML 4150',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Mediation Theory and Practice' },
+        update: {},
+        create: {
+          name: 'Mediation Theory and Practice',
+          professor: 'Emilia Péch',
+          courseCode: 'CML 2320',
+        },
+      }),
+    ]);
 
     // Clear existing schedules
-    await client.query('DELETE FROM course_schedules');
+    await prisma.courseSchedule.deleteMany({});
 
-    // Insert schedules (0 = Monday, 1 = Tuesday, etc.)
+    // Create schedules
     const schedules = [
       // Labour Law I - Monday 2:30PM-3:50PM & Wednesday 1:00PM-2:20PM
       {
-        course_id: courseMap['Labour Law I'],
-        course_code: 'CML 3233',
-        day_of_week: 0,
-        start_time: '14:30',
-        end_time: '15:50',
+        courseId: courses[0].id,
+        dayOfWeek: 0,
+        startTime: '14:30',
+        endTime: '15:50',
         room: '57 Louis Pasteur (FTX) 137',
-        location_code: 'FTX',
-        section: 'A00'
+        locationCode: 'FTX',
+        section: 'A00',
       },
       {
-        course_id: courseMap['Labour Law I'],
-        course_code: 'CML 3233',
-        day_of_week: 2,
-        start_time: '13:00',
-        end_time: '14:20',
+        courseId: courses[0].id,
+        dayOfWeek: 2,
+        startTime: '13:00',
+        endTime: '14:20',
         room: '57 Louis Pasteur (FTX) 137',
-        location_code: 'FTX',
-        section: 'A00'
+        locationCode: 'FTX',
+        section: 'A00',
       },
       // Studies in Public Law - Monday 4:00PM-6:50PM
       {
-        course_id: courseMap['Studies in Public Law'],
-        course_code: 'CML 4104',
-        day_of_week: 0,
-        start_time: '16:00',
-        end_time: '18:50',
+        courseId: courses[1].id,
+        dayOfWeek: 0,
+        startTime: '16:00',
+        endTime: '18:50',
         room: '57 Louis Pasteur (FTX) 413',
-        location_code: 'FTX',
-        section: 'B00'
+        locationCode: 'FTX',
+        section: 'B00',
       },
       // Studies in International Law - Tuesday 5:30PM-8:20PM
       {
-        course_id: courseMap['Studies in International Law'],
-        course_code: 'CML 4108',
-        day_of_week: 1,
-        start_time: '17:30',
-        end_time: '20:20',
+        courseId: courses[2].id,
+        dayOfWeek: 1,
+        startTime: '17:30',
+        endTime: '20:20',
         room: '57 Louis Pasteur (FTX) 402',
-        location_code: 'FTX',
-        section: 'A00'
+        locationCode: 'FTX',
+        section: 'A00',
       },
       // Globalization and Law - Tuesday 2:30PM-3:50PM & Thursday 2:30PM-3:50PM
       {
-        course_id: courseMap['Globalization and Law'],
-        course_code: 'CML 4150',
-        day_of_week: 1,
-        start_time: '14:30',
-        end_time: '15:50',
+        courseId: courses[3].id,
+        dayOfWeek: 1,
+        startTime: '14:30',
+        endTime: '15:50',
         room: '57 Louis Pasteur (FTX) 315',
-        location_code: 'FTX',
-        section: 'A00'
+        locationCode: 'FTX',
+        section: 'A00',
       },
       {
-        course_id: courseMap['Globalization and Law'],
-        course_code: 'CML 4150',
-        day_of_week: 3,
-        start_time: '14:30',
-        end_time: '15:50',
+        courseId: courses[3].id,
+        dayOfWeek: 3,
+        startTime: '14:30',
+        endTime: '15:50',
         room: '57 Louis Pasteur (FTX) 315',
-        location_code: 'FTX',
-        section: 'A00'
+        locationCode: 'FTX',
+        section: 'A00',
       },
       // Mediation Theory and Practice - Wednesday 5:30PM-8:20PM
       {
-        course_id: courseMap['Mediation Theory and Practice'],
-        course_code: 'CML 2320',
-        day_of_week: 2,
-        start_time: '17:30',
-        end_time: '20:20',
+        courseId: courses[4].id,
+        dayOfWeek: 2,
+        startTime: '17:30',
+        endTime: '20:20',
         room: '120 University (FSS) 14001',
-        location_code: 'FSS',
-        section: 'A00'
-      }
+        locationCode: 'FSS',
+        section: 'A00',
+      },
     ];
 
     for (const schedule of schedules) {
-      await client.query(
-        `INSERT INTO course_schedules (course_id, course_code, day_of_week, start_time, end_time, room, location_code, section)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          schedule.course_id,
-          schedule.course_code,
-          schedule.day_of_week,
-          schedule.start_time,
-          schedule.end_time,
-          schedule.room,
-          schedule.location_code,
-          schedule.section
-        ]
-      );
+      await prisma.courseSchedule.create({ data: schedule });
     }
 
-    client.release();
-    res.json({ success: true, message: 'Schedule seeded successfully' });
+    res.json({
+      success: true,
+      message: 'Schedule seeded successfully',
+      coursesCreated: courses.length,
+      schedulesCreated: schedules.length
+    });
   } catch (err) {
     console.error('Seed schedule error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get today's schedule
+// Get today's schedule (Prisma)
 app.get('/api/schedule/today', async (req, res) => {
   try {
-    if (!pool) {
-      return res.status(503).json({ error: 'Database not connected' });
-    }
-
     // Get current day of week (0 = Monday, 6 = Sunday)
     // In JavaScript, Sunday is 0, so we need to adjust
     const jsDay = new Date().getDay();
     const dbDay = jsDay === 0 ? 6 : jsDay - 1; // Convert to 0=Mon, 1=Tue, etc.
 
-    const result = await pool.query(
-      `SELECT
-        c.id as course_id,
-        c.name as course_name,
-        c.professor,
-        s.course_code,
-        s.start_time,
-        s.end_time,
-        s.room,
-        s.location_code,
-        s.section
-       FROM course_schedules s
-       JOIN courses c ON s.course_id = c.id
-       WHERE s.day_of_week = $1
-       ORDER BY s.start_time ASC`,
-      [dbDay]
-    );
+    const schedules = await prisma.courseSchedule.findMany({
+      where: { dayOfWeek: dbDay },
+      include: {
+        course: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const classes = schedules.map(s => ({
+      courseId: s.course.id,
+      courseName: s.course.name,
+      professor: s.course.professor,
+      courseCode: s.courseCode,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room,
+      locationCode: s.locationCode,
+      section: s.section,
+    }));
 
     res.json({
-      day: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dbDay],
+      day: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][dbDay],
       date: new Date().toISOString().split('T')[0],
-      classes: result.rows,
-      count: result.rows.length
+      classes,
+      count: classes.length,
     });
   } catch (err) {
     console.error('Error fetching today\'s schedule:', err);
@@ -1019,10 +1044,6 @@ app.get('/api/schedule/today', async (req, res) => {
 // Get schedule for specific day (0=Monday, 6=Sunday)
 app.get('/api/schedule/:day', async (req, res) => {
   try {
-    if (!pool) {
-      return res.status(503).json({ error: 'Database not connected' });
-    }
-
     const { day } = req.params;
     const dayNum = parseInt(day, 10);
 
@@ -1030,29 +1051,31 @@ app.get('/api/schedule/:day', async (req, res) => {
       return res.status(400).json({ error: 'day must be 0-6 (0=Monday)' });
     }
 
-    const result = await pool.query(
-      `SELECT
-        c.id as course_id,
-        c.name as course_name,
-        c.professor,
-        s.course_code,
-        s.start_time,
-        s.end_time,
-        s.room,
-        s.location_code,
-        s.section
-       FROM course_schedules s
-       JOIN courses c ON s.course_id = c.id
-       WHERE s.day_of_week = $1
-       ORDER BY s.start_time ASC`,
-      [dayNum]
-    );
+    const schedules = await prisma.courseSchedule.findMany({
+      where: { dayOfWeek: dayNum },
+      include: {
+        course: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const classes = schedules.map(s => ({
+      courseId: s.course.id,
+      courseName: s.course.name,
+      professor: s.course.professor,
+      courseCode: s.courseCode,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room,
+      locationCode: s.locationCode,
+      section: s.section,
+    }));
 
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     res.json({
       day: dayNames[dayNum],
-      classes: result.rows,
-      count: result.rows.length
+      classes,
+      count: classes.length,
     });
   } catch (err) {
     console.error('Error fetching schedule:', err);
@@ -1063,31 +1086,29 @@ app.get('/api/schedule/:day', async (req, res) => {
 // Get all courses with their schedules
 app.get('/api/courses-with-schedules', async (req, res) => {
   try {
-    if (!pool) {
-      return res.status(503).json({ error: 'Database not connected' });
-    }
+    const coursesWithSchedules = await prisma.course.findMany({
+      include: {
+        courseSchedules: true,
+      },
+      orderBy: { name: 'asc' },
+    });
 
-    const result = await pool.query(
-      `SELECT
-        c.id,
-        c.name,
-        c.professor,
-        json_agg(json_build_object(
-          'course_code', s.course_code,
-          'day_of_week', s.day_of_week,
-          'start_time', s.start_time,
-          'end_time', s.end_time,
-          'room', s.room,
-          'location_code', s.location_code,
-          'section', s.section
-        )) FILTER (WHERE s.id IS NOT NULL) as schedules
-       FROM courses c
-       LEFT JOIN course_schedules s ON c.id = s.course_id
-       GROUP BY c.id, c.name, c.professor
-       ORDER BY c.name`
-    );
+    const result = coursesWithSchedules.map(c => ({
+      id: c.id,
+      name: c.name,
+      professor: c.professor,
+      schedules: c.courseSchedules.map(s => ({
+        courseCode: s.courseCode,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        room: s.room,
+        locationCode: s.locationCode,
+        section: s.section,
+      })),
+    }));
 
-    res.json(result.rows);
+    res.json(result);
   } catch (err) {
     console.error('Error fetching courses with schedules:', err);
     res.status(500).json({ error: err.message });
