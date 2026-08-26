@@ -16,6 +16,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
 const multer = require('multer');
+const prisma = require('./lib/prisma');
 const { uploadPDF } = require('./services/s3');
 const { processPDF, generateFlashcards } = require('./services/claude');
 
@@ -177,14 +178,28 @@ app.post('/api/admin/init-db', async (req, res) => {
         added_at TIMESTAMP DEFAULT NOW()
       );
 
+      -- Course schedules (times and locations)
+      CREATE TABLE IF NOT EXISTS course_schedules (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id),
+        course_code VARCHAR(50),
+        day_of_week INTEGER NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        room VARCHAR(100),
+        location_code VARCHAR(50),
+        section VARCHAR(10),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- Insert 3L courses
       INSERT INTO courses (name, professor) VALUES
-        ('Labour Law I', 'Malhotra'),
-        ('Public Law', NULL),
-        ('International Law', NULL),
-        ('Globalization and Law', NULL),
-        ('Mediation', NULL)
-      ON CONFLICT DO NOTHING;
+        ('Labour Law I', 'Ravi A. Malhotra'),
+        ('Studies in Public Law', 'Andres Drew'),
+        ('Studies in International Law', 'Aram Kerkonian'),
+        ('Globalization and Law', 'Errol Mendes'),
+        ('Mediation Theory and Practice', 'Emilia Péch')
+      ON CONFLICT (name) DO NOTHING;
     `;
 
     await client.query(schema);
@@ -837,6 +852,265 @@ app.get('/api/notes/:id/export-pdf', async (req, res) => {
     doc.end();
   } catch (err) {
     console.error('Error exporting PDF:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Seed course schedules using Prisma
+app.post('/api/admin/seed-schedule', async (req, res) => {
+  try {
+    console.log('🌱 Seeding schedule via API...');
+
+    // Create or update courses
+    const courses = await Promise.all([
+      prisma.course.upsert({
+        where: { name: 'Labour Law I' },
+        update: {},
+        create: {
+          name: 'Labour Law I',
+          professor: 'Ravi A. Malhotra',
+          courseCode: 'CML 3233',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Studies in Public Law' },
+        update: {},
+        create: {
+          name: 'Studies in Public Law',
+          professor: 'Andres Drew',
+          courseCode: 'CML 4104',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Studies in International Law' },
+        update: {},
+        create: {
+          name: 'Studies in International Law',
+          professor: 'Aram Kerkonian',
+          courseCode: 'CML 4108',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Globalization and Law' },
+        update: {},
+        create: {
+          name: 'Globalization and Law',
+          professor: 'Errol Mendes',
+          courseCode: 'CML 4150',
+        },
+      }),
+      prisma.course.upsert({
+        where: { name: 'Mediation Theory and Practice' },
+        update: {},
+        create: {
+          name: 'Mediation Theory and Practice',
+          professor: 'Emilia Péch',
+          courseCode: 'CML 2320',
+        },
+      }),
+    ]);
+
+    // Clear existing schedules
+    await prisma.courseSchedule.deleteMany({});
+
+    // Create schedules
+    const schedules = [
+      // Labour Law I - Monday 2:30PM-3:50PM & Wednesday 1:00PM-2:20PM
+      {
+        courseId: courses[0].id,
+        dayOfWeek: 0,
+        startTime: '14:30',
+        endTime: '15:50',
+        room: '57 Louis Pasteur (FTX) 137',
+        locationCode: 'FTX',
+        section: 'A00',
+      },
+      {
+        courseId: courses[0].id,
+        dayOfWeek: 2,
+        startTime: '13:00',
+        endTime: '14:20',
+        room: '57 Louis Pasteur (FTX) 137',
+        locationCode: 'FTX',
+        section: 'A00',
+      },
+      // Studies in Public Law - Monday 4:00PM-6:50PM
+      {
+        courseId: courses[1].id,
+        dayOfWeek: 0,
+        startTime: '16:00',
+        endTime: '18:50',
+        room: '57 Louis Pasteur (FTX) 413',
+        locationCode: 'FTX',
+        section: 'B00',
+      },
+      // Studies in International Law - Tuesday 5:30PM-8:20PM
+      {
+        courseId: courses[2].id,
+        dayOfWeek: 1,
+        startTime: '17:30',
+        endTime: '20:20',
+        room: '57 Louis Pasteur (FTX) 402',
+        locationCode: 'FTX',
+        section: 'A00',
+      },
+      // Globalization and Law - Tuesday 2:30PM-3:50PM & Thursday 2:30PM-3:50PM
+      {
+        courseId: courses[3].id,
+        dayOfWeek: 1,
+        startTime: '14:30',
+        endTime: '15:50',
+        room: '57 Louis Pasteur (FTX) 315',
+        locationCode: 'FTX',
+        section: 'A00',
+      },
+      {
+        courseId: courses[3].id,
+        dayOfWeek: 3,
+        startTime: '14:30',
+        endTime: '15:50',
+        room: '57 Louis Pasteur (FTX) 315',
+        locationCode: 'FTX',
+        section: 'A00',
+      },
+      // Mediation Theory and Practice - Wednesday 5:30PM-8:20PM
+      {
+        courseId: courses[4].id,
+        dayOfWeek: 2,
+        startTime: '17:30',
+        endTime: '20:20',
+        room: '120 University (FSS) 14001',
+        locationCode: 'FSS',
+        section: 'A00',
+      },
+    ];
+
+    for (const schedule of schedules) {
+      await prisma.courseSchedule.create({ data: schedule });
+    }
+
+    res.json({
+      success: true,
+      message: 'Schedule seeded successfully',
+      coursesCreated: courses.length,
+      schedulesCreated: schedules.length
+    });
+  } catch (err) {
+    console.error('Seed schedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get today's schedule (Prisma)
+app.get('/api/schedule/today', async (req, res) => {
+  try {
+    // Get current day of week (0 = Monday, 6 = Sunday)
+    // In JavaScript, Sunday is 0, so we need to adjust
+    const jsDay = new Date().getDay();
+    const dbDay = jsDay === 0 ? 6 : jsDay - 1; // Convert to 0=Mon, 1=Tue, etc.
+
+    const schedules = await prisma.courseSchedule.findMany({
+      where: { dayOfWeek: dbDay },
+      include: {
+        course: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const classes = schedules.map(s => ({
+      courseId: s.course.id,
+      courseName: s.course.name,
+      professor: s.course.professor,
+      courseCode: s.courseCode,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room,
+      locationCode: s.locationCode,
+      section: s.section,
+    }));
+
+    res.json({
+      day: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][dbDay],
+      date: new Date().toISOString().split('T')[0],
+      classes,
+      count: classes.length,
+    });
+  } catch (err) {
+    console.error('Error fetching today\'s schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get schedule for specific day (0=Monday, 6=Sunday)
+app.get('/api/schedule/:day', async (req, res) => {
+  try {
+    const { day } = req.params;
+    const dayNum = parseInt(day, 10);
+
+    if (isNaN(dayNum) || dayNum < 0 || dayNum > 6) {
+      return res.status(400).json({ error: 'day must be 0-6 (0=Monday)' });
+    }
+
+    const schedules = await prisma.courseSchedule.findMany({
+      where: { dayOfWeek: dayNum },
+      include: {
+        course: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    const classes = schedules.map(s => ({
+      courseId: s.course.id,
+      courseName: s.course.name,
+      professor: s.course.professor,
+      courseCode: s.courseCode,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      room: s.room,
+      locationCode: s.locationCode,
+      section: s.section,
+    }));
+
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    res.json({
+      day: dayNames[dayNum],
+      classes,
+      count: classes.length,
+    });
+  } catch (err) {
+    console.error('Error fetching schedule:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all courses with their schedules
+app.get('/api/courses-with-schedules', async (req, res) => {
+  try {
+    const coursesWithSchedules = await prisma.course.findMany({
+      include: {
+        courseSchedules: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const result = coursesWithSchedules.map(c => ({
+      id: c.id,
+      name: c.name,
+      professor: c.professor,
+      schedules: c.courseSchedules.map(s => ({
+        courseCode: s.courseCode,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        room: s.room,
+        locationCode: s.locationCode,
+        section: s.section,
+      })),
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching courses with schedules:', err);
     res.status(500).json({ error: err.message });
   }
 });
