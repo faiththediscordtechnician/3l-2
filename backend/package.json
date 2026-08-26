@@ -10,7 +10,7 @@
     "prisma:migrate": "npx prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "npx prisma studio",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "prisma generate && prisma skills sync || exit 0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.28.0",
