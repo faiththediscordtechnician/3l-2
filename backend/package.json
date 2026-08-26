@@ -17,7 +17,7 @@
     "@anthropic-ai/sdk": "^0.28.0",
     "@aws-sdk/client-s3": "^3.400.0",
     "@aws-sdk/s3-request-presigner": "^3.400.0",
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "^5.15.0",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -27,7 +27,7 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.13.0",
     "pg": "^8.11.3",
-    "prisma": "^8.0.0-rc.10"
+    "prisma": "^5.15.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
