@@ -4,13 +4,14 @@
   "description": "Law school study app API backend",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "build": "npx prisma generate",
+    "start": "npm run build && node src/index.js",
     "dev": "nodemon src/index.js",
     "migrate": "node src/db/init.js",
     "prisma:migrate": "npx prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "npx prisma studio",
-    "postinstall": "prisma generate && prisma skills sync || exit 0"
+    "postinstall": "npx prisma skills sync || exit 0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.28.0",
