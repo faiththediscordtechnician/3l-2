@@ -4,7 +4,7 @@
   "description": "Comprehensive law school study application for Marie's 3L courses",
   "private": true,
   "engines": {
-    "node": "18.x"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "cd backend && node src/index.js",
