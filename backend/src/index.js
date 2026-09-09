@@ -17,7 +17,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const multer = require('multer');
 const prisma = require('./lib/prisma');
-const { uploadPDF } = require('./services/s3');
+const { uploadPDF, getPDFUrl } = require('./services/s3');
 const { processPDF, generateFlashcards } = require('./services/claude');
 const { extractTextFromURL } = require('./services/pdf');
 
@@ -1069,6 +1069,30 @@ app.post('/api/admin/seed-schedule', async (req, res) => {
     });
   } catch (err) {
     console.error('Seed schedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get presigned URL to read a document
+app.get('/api/documents/:id/read-url', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const docResult = await pool.query('SELECT * FROM documents WHERE id = $1', [id]);
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const document = docResult.rows[0];
+    const readUrl = await getPDFUrl(document.s3_key);
+
+    res.json({
+      success: true,
+      url: readUrl,
+      title: document.title,
+    });
+  } catch (err) {
+    console.error('Error generating read URL:', err);
     res.status(500).json({ error: err.message });
   }
 });
