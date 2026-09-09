@@ -1084,6 +1084,19 @@ app.get('/api/documents/:id/read-url', async (req, res) => {
     }
 
     const document = docResult.rows[0];
+    console.log(`📖 Generating read URL for document ${id}, s3_key: ${document.s3_key}`);
+    console.log(`S3 Config - Endpoint: ${process.env.S3_ENDPOINT}, Bucket: ${process.env.S3_BUCKET}`);
+
+    // If S3 isn't configured, return the direct URL
+    if (!process.env.S3_ENDPOINT || !process.env.AWS_ACCESS_KEY_ID) {
+      console.log('⚠️ S3 not fully configured, returning direct S3 URL');
+      return res.json({
+        success: true,
+        url: document.s3_url,
+        title: document.title,
+      });
+    }
+
     const readUrl = await getPDFUrl(document.s3_key);
 
     res.json({
@@ -1093,7 +1106,7 @@ app.get('/api/documents/:id/read-url', async (req, res) => {
     });
   } catch (err) {
     console.error('Error generating read URL:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: `Failed to generate URL: ${err.message}` });
   }
 });
 
