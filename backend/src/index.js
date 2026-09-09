@@ -19,6 +19,7 @@ const multer = require('multer');
 const prisma = require('./lib/prisma');
 const { uploadPDF } = require('./services/s3');
 const { processPDF, generateFlashcards } = require('./services/claude');
+const { extractTextFromURL } = require('./services/pdf');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -282,10 +283,39 @@ app.post('/api/documents/upload', upload.single('file'), async (req, res) => {
       [courseId, title || req.file.originalname, s3Result.s3_key, s3Result.s3_url, s3Result.file_size]
     );
 
+    const document = docResult.rows[0];
+
+    // Auto-process document in background
+    (async () => {
+      try {
+        console.log(`🤖 Auto-processing document ${document.id}...`);
+        const pdfText = await extractTextFromURL(document.s3_url);
+        const summary = await processPDF(pdfText, document.title);
+
+        await pool.query(
+          `INSERT INTO document_summaries (document_id, holding, reasoning, key_points, statute_references, related_doctrine)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            document.id,
+            summary.holding,
+            summary.reasoning,
+            JSON.stringify(summary.key_points || []),
+            JSON.stringify(summary.statute_references || []),
+            summary.related_doctrine,
+          ]
+        );
+
+        await pool.query('UPDATE documents SET processed = TRUE WHERE id = $1', [document.id]);
+        console.log(`✅ Document ${document.id} processed successfully`);
+      } catch (processErr) {
+        console.error(`⚠️ Auto-processing failed for document ${document.id}:`, processErr.message);
+      }
+    })();
+
     res.status(201).json({
       success: true,
-      document: docResult.rows[0],
-      message: 'File uploaded successfully. Process with /api/documents/:id/process',
+      document,
+      message: 'File uploaded successfully. Processing in background...',
     });
   } catch (err) {
     console.error('Upload error:', err);
