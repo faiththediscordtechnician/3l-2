@@ -857,9 +857,51 @@ app.get('/api/notes/:id/export-pdf', async (req, res) => {
 });
 
 // Seed course schedules using Prisma
+// Initialize database schema if it doesn't exist
+const ensureSchema = async () => {
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
+
+  const client = await pool.connect();
+  try {
+    // Check if courses table exists
+    const result = await client.query(
+      `SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'courses'
+      );`
+    );
+
+    if (result.rows[0].exists) {
+      console.log('✅ Database schema already exists');
+      return;
+    }
+
+    console.log('🔧 Creating database schema...');
+
+    // Read and execute migration SQL
+    const fs = require('fs');
+    const migrationPath = path.join(__dirname, '../prisma/migrations/20240101000000_init/migration.sql');
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+
+    await client.query(migrationSQL);
+    console.log('✅ Database schema created successfully');
+  } finally {
+    client.release();
+  }
+};
+
 app.post('/api/admin/seed-schedule', async (req, res) => {
   try {
     console.log('🌱 Seeding schedule via API...');
+
+    // Ensure schema exists
+    try {
+      await ensureSchema();
+    } catch (schemaErr) {
+      console.warn('⚠️ Schema initialization failed, attempting to continue:', schemaErr.message);
+    }
 
     // Create or update courses
     const courses = await Promise.all([
