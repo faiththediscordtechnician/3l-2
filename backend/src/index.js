@@ -1073,6 +1073,64 @@ app.post('/api/admin/seed-schedule', async (req, res) => {
   }
 });
 
+// Reprocess all unprocessed documents
+app.post('/api/admin/reprocess-documents', async (req, res) => {
+  try {
+    console.log('🔄 Reprocessing all unprocessed documents...');
+
+    // Get all unprocessed documents
+    const docsResult = await pool.query('SELECT * FROM documents WHERE processed = FALSE');
+    const documents = docsResult.rows;
+
+    if (documents.length === 0) {
+      return res.json({ message: 'No unprocessed documents found', count: 0 });
+    }
+
+    let processed = 0;
+    let failed = 0;
+
+    // Process each document
+    for (const doc of documents) {
+      try {
+        console.log(`🤖 Processing document ${doc.id}: ${doc.title}...`);
+        const pdfText = await extractTextFromURL(doc.s3_url);
+        const summary = await processPDF(pdfText, doc.title);
+
+        await pool.query(
+          `INSERT INTO document_summaries (document_id, holding, reasoning, key_points, statute_references, related_doctrine)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT DO NOTHING`,
+          [
+            doc.id,
+            summary.holding,
+            summary.reasoning,
+            JSON.stringify(summary.key_points || []),
+            JSON.stringify(summary.statute_references || []),
+            summary.related_doctrine,
+          ]
+        );
+
+        await pool.query('UPDATE documents SET processed = TRUE WHERE id = $1', [doc.id]);
+        processed++;
+        console.log(`✅ Document ${doc.id} processed`);
+      } catch (err) {
+        failed++;
+        console.error(`⚠️ Failed to process document ${doc.id}:`, err.message);
+      }
+    }
+
+    res.json({
+      message: 'Reprocessing complete',
+      total: documents.length,
+      processed,
+      failed,
+    });
+  } catch (err) {
+    console.error('Reprocessing error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get today's schedule (Prisma)
 app.get('/api/schedule/today', async (req, res) => {
   try {
