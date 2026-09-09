@@ -1073,6 +1073,20 @@ app.post('/api/admin/seed-schedule', async (req, res) => {
   }
 });
 
+// Debug: Get document info
+app.get('/api/documents/:id/info', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docResult = await pool.query('SELECT id, title, s3_key, s3_url, processed FROM documents WHERE id = $1', [id]);
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    res.json(docResult.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get presigned URL to read a document
 app.get('/api/documents/:id/read-url', async (req, res) => {
   try {
@@ -1084,12 +1098,14 @@ app.get('/api/documents/:id/read-url', async (req, res) => {
     }
 
     const document = docResult.rows[0];
-    console.log(`📖 Generating read URL for document ${id}, s3_key: ${document.s3_key}`);
-    console.log(`S3 Config - Endpoint: ${process.env.S3_ENDPOINT}, Bucket: ${process.env.S3_BUCKET}`);
+    console.log(`📖 Read URL request for document ${id}`);
+    console.log(`   Title: ${document.title}`);
+    console.log(`   S3 Key: ${document.s3_key}`);
+    console.log(`   S3 URL: ${document.s3_url}`);
 
-    // If S3 isn't configured, return the direct URL
-    if (!process.env.S3_ENDPOINT || !process.env.AWS_ACCESS_KEY_ID) {
-      console.log('⚠️ S3 not fully configured, returning direct S3 URL');
+    // Return the direct S3 URL stored in database
+    if (document.s3_url) {
+      console.log(`✅ Returning S3 URL`);
       return res.json({
         success: true,
         url: document.s3_url,
@@ -1097,16 +1113,11 @@ app.get('/api/documents/:id/read-url', async (req, res) => {
       });
     }
 
-    const readUrl = await getPDFUrl(document.s3_key);
-
-    res.json({
-      success: true,
-      url: readUrl,
-      title: document.title,
-    });
+    console.log('⚠️ No S3 URL found');
+    res.status(400).json({ error: 'Document S3 URL not available' });
   } catch (err) {
-    console.error('Error generating read URL:', err);
-    res.status(500).json({ error: `Failed to generate URL: ${err.message}` });
+    console.error('Error getting read URL:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
