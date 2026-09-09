@@ -7,32 +7,9 @@ export default function Cat() {
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    let animationFrame;
-    let x = 0;
-    let dir = 1;
-    let stepCount = 0;
-
-    const animate = () => {
-      if (!isPaused) {
-        x += dir * 2;
-        stepCount = (stepCount + 1) % 8;
-
-        if (x > window.innerWidth - 60) {
-          dir = -1;
-        } else if (x < 0) {
-          dir = 1;
-        }
-
-        setPosition({ x, y: window.innerHeight - 60 });
-        setDirection(dir);
-        setStep(Math.floor(stepCount / 4));
-      }
-      animationFrame = requestAnimationFrame(animate);
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [isPaused]);
+    // Animation disabled - keeping cat static
+    setPosition({ x: 20, y: window.innerHeight - 60 });
+  }, []);
 
   // Pixelated black cat with green eyes
   const catArt = (
@@ -55,47 +32,23 @@ export default function Cat() {
   );
 
   return (
-    <>
+    <div
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        bottom: '20px',
+        zIndex: 999,
+        pointerEvents: 'none',
+      }}
+    >
       <div
         style={{
-          position: 'fixed',
-          left: `${position.x}px`,
-          bottom: '20px',
-          zIndex: 999,
-          pointerEvents: 'none',
-          animation: `walk ${step === 0 ? '0.2s' : '0.1s'} infinite`,
-        }}
-      >
-        <div
-          style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            transform: direction === -1 ? 'scaleX(-1)' : 'scaleX(1)',
-          }}
-        >
-          🐈‍⬛
-        </div>
-      </div>
-      <button
-        onClick={() => setIsPaused(!isPaused)}
-        style={{
-          position: 'fixed',
-          bottom: '80px',
-          right: '20px',
-          zIndex: 1000,
-          padding: '8px 12px',
-          background: isPaused ? '#FFB3D9' : '#B4D7FF',
-          border: '2px solid #333',
-          borderRadius: '4px',
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '12px',
+          fontSize: '24px',
           fontWeight: 'bold',
-          cursor: 'pointer',
-          color: '#333',
         }}
       >
-        {isPaused ? '▶️ Play' : '⏸️ Pause'}
-      </button>
-    </>
+        🐈‍⬛
+      </div>
+    </div>
   );
 }
