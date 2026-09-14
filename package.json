@@ -1,16 +1,10 @@
 {
-  "name": "3l-law-school-app",
+  "name": "quick-notes-mvp",
   "version": "1.0.0",
-  "description": "Comprehensive law school study application for Marie's 3L courses",
+  "description": "Fast note-taking app with N64 aesthetic",
   "private": true,
-  "engines": {
-    "node": ">=20.0.0"
-  },
   "scripts": {
-    "start": "cd backend && node src/index.js",
-    "dev": "npm run dev --workspaces",
-    "backend:dev": "npm run dev -w backend",
-    "frontend:dev": "npm run dev -w frontend",
-    "cli:dev": "npm run dev -w cli"
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build"
   }
 }
