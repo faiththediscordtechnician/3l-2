@@ -3,16 +3,14 @@ import './NoteEditor.css'
 
 export default function NoteEditor({ note, onUpdate }) {
   const [title, setTitle] = useState(note.title)
-  const [content, setContent] = useState(note.content)
   const [isSaving, setIsSaving] = useState(false)
   const contentRef = useRef(null)
   const saveTimeoutRef = useRef(null)
 
-  // Update state when note changes
+  // Update title when a different note is selected
   useEffect(() => {
     setTitle(note.title)
-    setContent(note.content)
-  }, [note])
+  }, [note.id, note.title])
 
   // Auto-save handler (debounced)
   const handleAutoSave = useCallback((newTitle, newContent) => {
@@ -33,19 +31,18 @@ export default function NoteEditor({ note, onUpdate }) {
   const handleTitleChange = (e) => {
     const newTitle = e.target.value
     setTitle(newTitle)
-    handleAutoSave(newTitle, content)
+    handleAutoSave(newTitle, contentRef.current?.innerHTML ?? '')
   }
 
-  const handleContentChange = (e) => {
-    const newContent = e.currentTarget.innerHTML
-    setContent(newContent)
-    handleAutoSave(title, newContent)
+  const handleContentChange = () => {
+    handleAutoSave(title, contentRef.current?.innerHTML ?? '')
   }
 
   // Rich text formatting
   const applyFormat = (command, value = null) => {
     document.execCommand(command, false, value)
     contentRef.current?.focus()
+    handleContentChange()
   }
 
   const exportPDF = () => {
@@ -53,7 +50,7 @@ export default function NoteEditor({ note, onUpdate }) {
     element.innerHTML = `
       <h1>${title}</h1>
       <p>${new Date(note.created_at).toLocaleString()}</p>
-      <div>${content}</div>
+      <div>${contentRef.current?.innerHTML ?? ''}</div>
     `
     // Simple PDF export using print
     const printWindow = window.open('', '', 'height=400,width=800')
@@ -104,15 +101,15 @@ export default function NoteEditor({ note, onUpdate }) {
       </div>
 
       <div
+        key={note.id}
         ref={contentRef}
         contentEditable
         suppressContentEditableWarning
         onInput={handleContentChange}
         className="note-content"
         placeholder="Start typing..."
-      >
-        {content}
-      </div>
+        dangerouslySetInnerHTML={{ __html: note.content }}
+      />
     </div>
   )
 }
