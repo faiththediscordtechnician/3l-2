@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Notes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>📝 Notes</h1>
+        <div class="sidebar-actions">
+          <button id="newNoteBtn" class="btn-new" title="New Note">+ New</button>
+          <div class="sync-indicator" id="syncIndicator">
+            <span class="sync-status">Offline</span>
+          </div>
+        </div>
+      </div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search notes...">
+      </div>
+      <div id="notesList" class="notes-list"></div>
+    </aside>
+
+    <main class="editor-area">
+      <div id="noSelection" class="no-selection">
+        <div class="empty-state">
+          <p>✨ Create a note to get started</p>
+        </div>
+      </div>
+      <div id="editorContainer" class="editor-container" hidden>
+        <div class="editor-header">
+          <input type="text" id="noteTitle" class="note-title" placeholder="Note title..." autocomplete="off">
+          <div class="editor-actions">
+            <button id="pinBtn" class="btn-pin" title="Pin note">📌</button>
+            <button id="exportBtn" class="btn-export" title="Export as PDF">📥</button>
+            <button id="deleteBtn" class="btn-delete" title="Delete note">🗑️</button>
+          </div>
+        </div>
+
+        <div class="editor-toolbar">
+          <button id="boldBtn" class="toolbar-btn" title="Bold (Ctrl+B)">B</button>
+          <button id="italicBtn" class="toolbar-btn" title="Italic (Ctrl+I)">I</button>
+          <button id="underlineBtn" class="toolbar-btn" title="Underline (Ctrl+U)">U</button>
+          <div class="toolbar-divider"></div>
+          <button id="listBtn" class="toolbar-btn" title="Bullet List">•</button>
+          <div class="toolbar-divider"></div>
+          <input type="color" id="highlightColor" class="color-picker" value="#FFFF00" title="Highlight color">
+          <button id="highlightBtn" class="toolbar-btn" title="Highlight">🎨</button>
+        </div>
+
+        <div id="noteContent" class="note-content" contenteditable="true"></div>
+        <div class="editor-footer">
+          <span id="noteDate" class="note-date"></span>
+          <span id="autoSaveIndicator" class="auto-save">Auto-saving...</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
