@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     nginx \
     supervisor \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /var/log/nginx /var/log/uvicorn
+    && mkdir -p /var/log/nginx /var/log/uvicorn /app/data
 
 WORKDIR /app
 
