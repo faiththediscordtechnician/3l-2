@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
@@ -67,7 +67,7 @@ def get_db():
 
 # Routes
 @app.get("/api/notes/", response_model=list[NoteSchema])
-def list_notes(db: Session = next(get_db())):
+def list_notes(db: Session = Depends(get_db)):
     """Get all notes, sorted by pinned status and date"""
     notes = db.query(NoteModel).order_by(
         NoteModel.pinned.desc(),
@@ -76,7 +76,7 @@ def list_notes(db: Session = next(get_db())):
     return notes
 
 @app.post("/api/notes/", response_model=NoteSchema)
-def create_note(note: NoteCreateUpdate, db: Session = next(get_db())):
+def create_note(note: NoteCreateUpdate, db: Session = Depends(get_db)):
     """Create a new note"""
     db_note = NoteModel(**note.dict())
     db.add(db_note)
@@ -85,7 +85,7 @@ def create_note(note: NoteCreateUpdate, db: Session = next(get_db())):
     return db_note
 
 @app.get("/api/notes/{note_id}", response_model=NoteSchema)
-def get_note(note_id: int, db: Session = next(get_db())):
+def get_note(note_id: int, db: Session = Depends(get_db)):
     """Get a specific note"""
     note = db.query(NoteModel).filter(NoteModel.id == note_id).first()
     if not note:
@@ -93,7 +93,7 @@ def get_note(note_id: int, db: Session = next(get_db())):
     return note
 
 @app.put("/api/notes/{note_id}", response_model=NoteSchema)
-def update_note(note_id: int, note: NoteCreateUpdate, db: Session = next(get_db())):
+def update_note(note_id: int, note: NoteCreateUpdate, db: Session = Depends(get_db)):
     """Update a note"""
     db_note = db.query(NoteModel).filter(NoteModel.id == note_id).first()
     if not db_note:
@@ -109,7 +109,7 @@ def update_note(note_id: int, note: NoteCreateUpdate, db: Session = next(get_db(
     return db_note
 
 @app.delete("/api/notes/{note_id}")
-def delete_note(note_id: int, db: Session = next(get_db())):
+def delete_note(note_id: int, db: Session = Depends(get_db)):
     """Delete a note"""
     db_note = db.query(NoteModel).filter(NoteModel.id == note_id).first()
     if not db_note:
