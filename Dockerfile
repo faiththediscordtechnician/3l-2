@@ -24,19 +24,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend
 COPY backend/ ./backend/
 
-# Copy startup script
-COPY start.sh ./start.sh
-RUN chmod +x ./start.sh
+# Copy entrypoint script
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 # Copy frontend build
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 
-# Create supervisor config
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Copy nginx config
-COPY nginx.conf /etc/nginx/nginx.conf
-
 EXPOSE 8080
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
