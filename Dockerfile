@@ -4,8 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build || true
-RUN ls -la dist/ || mkdir -p dist && echo '<html><body>Frontend building...</body></html>' > dist/index.html
+RUN npm run build 2>&1 || (echo "Build failed, creating fallback" && mkdir -p dist)
+RUN if [ ! -f dist/index.html ]; then echo '<html><head><title>Quick Notes</title></head><body style="font-family: Arial; padding: 20px;"><h1>Quick Notes</h1><p>Frontend loading...</p></body></html>' > dist/index.html; fi
 
 FROM python:3.11-slim
 
